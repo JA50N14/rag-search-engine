@@ -3,7 +3,7 @@ import argparse
 from lib.hybrid_search import (
     normalize_scores,
     weighted_search_command,
-    rrf_search_command
+    rrf_search_command,
 )
 
 from lib.search_utils import (
@@ -25,7 +25,9 @@ def main() -> None:
     rrf_parser = subparser.add_parser("rrf-search", help="Perform Reciprocal Rank Fusion hybrid search")
     rrf_parser.add_argument("query", type=str, help="search query")
     rrf_parser.add_argument("--k", type=int, default=60, help="RRF k parameter controlling weight distribution - higher-ranked results vs lower-ranked ones (1=high rank distribution, 100=low rank distribution) - default=60")
+    rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
     rrf_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="Number of results to return (default=5)")
+    
 
     args = parser.parse_args()
 
@@ -49,8 +51,12 @@ def main() -> None:
                 print(f"   {res['document'][:100]}...")
                 print()
         case "rrf-search":
-            results = rrf_search_command(args.query, args.k, args.limit)
-            print(f"Rciprocal Rank Fusion Results for '{results["query"]}' (k={results["k"]}):")
+            results = rrf_search_command(args.query, args.k, args.enhance, args.limit)
+            
+            if results["enhanced_query"]:
+                print(f"Enhnaced query ({results["enhance_method"]}): '{results["original_query"]}' -> '{results["enhanced_query"]}'\n")
+
+            print(f"Reciprocal Rank Fusion Results for '{results["query"]}' (k={results["k"]}):")
             for i, res in enumerate(results["results"], 1):
                 print(f"{i}. {res["title"]}")
                 print(f"   RRF Score: {res["score"]:.3f}")
