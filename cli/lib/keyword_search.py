@@ -6,7 +6,7 @@ from collections  import defaultdict, Counter
 
 from nltk.stem import PorterStemmer
 
-from .search_utils import DEFAULT_SEARCH_LIMIT, CACHE_DIR, BM25_K1, BM25_B, load_movies, load_stopwords, format_search_results
+from .search_utils import DEFAULT_SEARCH_LIMIT, CACHE_DIR, BM25_K1, BM25_B, load_movies, load_stopwords, format_search_result
 
 class InvertedIndex:
     def __init__(self) -> None:
@@ -101,8 +101,8 @@ class InvertedIndex:
         return (tf * (k1 + 1)) / (tf + k1 * length_norm)
 
     def bm25(self, doc_id: int, term: str) -> float:
-        bm25_tf = self.get_bm25_tf(doc_id, term)
-        bm25_idf = self.get_bm25_idf(term)
+        bm25_tf = self.get_bm25_tf(doc_id, term) #term frequency in each doc
+        bm25_idf = self.get_bm25_idf(term) #num of docs the token is in
         return bm25_tf * bm25_idf
     
     def bm25_search(self, query, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
@@ -119,7 +119,7 @@ class InvertedIndex:
         results = []
         for doc_id, score in sorted_scores[:limit]:
             doc = self.docmap[doc_id]
-            formatted_result = format_search_results(
+            formatted_result = format_search_result(
                 doc_id = doc_id, 
                 title = doc["title"], 
                 document = doc["description"], 
