@@ -4,8 +4,9 @@ from typing import Optional
 
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
-from .search_utils import load_movies, format_search_result, DEFAULT_ALPHA, DEFAULT_SEARCH_LIMIT, RRF_K
+from .search_utils import load_movies, format_search_result, DEFAULT_ALPHA, DEFAULT_SEARCH_LIMIT, RRF_K, SEARCH_MULTIPLIER
 from .query_enhancement import enhance_query
+from .reranking import rerank
 
 class HybridSearch:
     def __init__(self, documents):
@@ -28,7 +29,7 @@ class HybridSearch:
         combined = combine_search_results(bm25_results, semantic_results, alpha)
         return combined[:limit]
     
-    def rrf_search(self, query, k, limit=10):
+    def rrf_search(self, query, k, limit=10) -> list[dict]:
         bm25_results = self._bm25_search(query, limit * 500)
         semantic_results = self.semantic_search.search_chunks(query, limit * 500)
         fused = reciprocal_rank_fusion(bm25_results, semantic_results, k)
@@ -169,7 +170,7 @@ def weighted_search_command(query: str, alpha: float=DEFAULT_ALPHA, limit: int=D
         "results": results,
     }
 
-def rrf_search_command(query: str, k: int = RRF_K, enhance: Optional[str]=None, limit: int=DEFAULT_SEARCH_LIMIT) -> dict:
+def rrf_search_command(query: str, k: int = RRF_K, enhance: Optional[str]=None, rerank_method: Optional[str]=None, limit: int=DEFAULT_SEARCH_LIMIT) -> dict:
     movies = load_movies()
     searcher = HybridSearch(movies)
     
@@ -178,13 +179,22 @@ def rrf_search_command(query: str, k: int = RRF_K, enhance: Optional[str]=None, 
     if enhance:
         enhanced_query = enhance_query(query, method=enhance)
         query = enhanced_query
-    
-    results = searcher.rrf_search(query, k, limit)
+
+    search_limit = limit * SEARCH_MULTIPLIER if rerank_method else limit
+
+    results = searcher.rrf_search(query, k, search_limit)
+
+    reranked = False
+    if rerank_method:
+        results = rerank(query, results, method=rerank_method, limit=limit)
+        reranked = True
 
     return {
         "original_query": original_query,
         "enhanced_query": enhanced_query,
         "enhance_method": enhance,
+        "rerank_method": rerank_method,
+        "reranked": reranked,
         "query": query,
         "k": k,
         "results": results,
