@@ -8,7 +8,7 @@ from .search_utils import load_movies, format_search_result, DEFAULT_ALPHA, DEFA
 from .query_enhancement import enhance_query
 from .reranking import rerank
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 class HybridSearch:
