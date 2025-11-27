@@ -1,12 +1,15 @@
 import os
+import logging
 
 from typing import Optional
-
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
 from .search_utils import load_movies, format_search_result, DEFAULT_ALPHA, DEFAULT_SEARCH_LIMIT, RRF_K, SEARCH_MULTIPLIER
 from .query_enhancement import enhance_query
 from .reranking import rerank
+
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 class HybridSearch:
     def __init__(self, documents):
@@ -170,24 +173,31 @@ def weighted_search_command(query: str, alpha: float=DEFAULT_ALPHA, limit: int=D
         "results": results,
     }
 
-def rrf_search_command(query: str, k: int = RRF_K, enhance: Optional[str]=None, rerank_method: Optional[str]=None, limit: int=DEFAULT_SEARCH_LIMIT) -> dict:
+def rrf_search_command(query: str, k: int = RRF_K, enhance: Optional[str]=None, rerank_method: Optional[str]=None, limit: int=DEFAULT_SEARCH_LIMIT, evaluate: bool=False) -> dict:
     movies = load_movies()
     searcher = HybridSearch(movies)
     
     original_query = query
+    logger.info(f"Original Query: {original_query}")
+
     enhanced_query = None
     if enhance:
         enhanced_query = enhance_query(query, method=enhance)
         query = enhanced_query
+        logger.info(f"Enhanced Query: {enhanced_query}")
 
     search_limit = limit * SEARCH_MULTIPLIER if rerank_method else limit
 
     results = searcher.rrf_search(query, k, search_limit)
+    for i, doc in enumerate(results, 1):
+        logger.info(f"rrf_search results: {i}. {doc["title"]}")
 
     reranked = False
     if rerank_method:
         results = rerank(query, results, method=rerank_method, limit=limit)
         reranked = True
+        for i, doc in enumerate(results, 1):
+            logger.info(f"rrf_results reranked: {i}. {doc["title"]}")
 
     return {
         "original_query": original_query,
@@ -199,3 +209,5 @@ def rrf_search_command(query: str, k: int = RRF_K, enhance: Optional[str]=None, 
         "k": k,
         "results": results,
     }
+
+

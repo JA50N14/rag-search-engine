@@ -10,6 +10,8 @@ from lib.search_utils import (
     DEFAULT_SEARCH_LIMIT,
 )
 
+from lib.evaluation import llm_judge_results
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
     subparser = parser.add_subparsers(dest="command", help="Available commands")
@@ -28,6 +30,7 @@ def main() -> None:
     rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
     rrf_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder"], help="Reranking method")
     rrf_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="Number of results to return (default=5)")
+    rrf_parser.add_argument("--evaluate", action="store_true", help="Rates search results")
     
 
     args = parser.parse_args()
@@ -52,7 +55,7 @@ def main() -> None:
                 print(f"   {res['document'][:100]}...")
                 print()
         case "rrf-search":
-            results = rrf_search_command(args.query, args.k, args.enhance, args.rerank_method, args.limit)
+            results = rrf_search_command(args.query, args.k, args.enhance, args.rerank_method, args.limit, args.evaluate)
             
             if results["enhanced_query"]:
                 print(f"Enhnaced query ({results["enhance_method"]}): '{results["original_query"]}' -> '{results["enhanced_query"]}'\n")
@@ -78,6 +81,11 @@ def main() -> None:
                 print(f"   BM25 Rank: {metadata["bm25_rank"]}, Semantic Rank: {metadata["semantic_rank"]}")
                 print(f"   {res["document"][:100]}...")
                 print()
+            
+            if args.evaluate:
+                llm_scores = llm_judge_results(results["query"], results["results"])
+                for i, res in enumerate(llm_scores, 1):
+                    print(f"{i}. {res["title"]}: {res["score"]}/3")
         case _:
             parser.print_help()
 
